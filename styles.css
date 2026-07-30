@@ -1,0 +1,100 @@
+:root {
+  --ink: #14213d;
+  --blue: #2f67d8;
+  --sky: #72c5ef;
+  --paper: #f7fbff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--ink);
+  font-family: "Trebuchet MS", "Aptos", sans-serif;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(114, 197, 239, .55), transparent 28%),
+    radial-gradient(circle at 85% 85%, rgba(47, 103, 216, .24), transparent 30%),
+    linear-gradient(145deg, #edf8ff, #f9fbff 52%, #e7efff);
+}
+
+.launch-card {
+  width: min(760px, 100%);
+  padding: clamp(38px, 8vw, 88px);
+  border: 1px solid rgba(47, 103, 216, .2);
+  border-radius: 42px;
+  background: rgba(255, 255, 255, .82);
+  box-shadow: 0 30px 80px rgba(20, 54, 110, .16);
+  text-align: center;
+  backdrop-filter: blur(16px);
+  animation: arrive .7s ease-out both;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  aspect-ratio: 1;
+  margin: 0 auto 28px;
+  border-radius: 28px;
+  color: white;
+  font: 800 2.8rem/1 Georgia, serif;
+  background: linear-gradient(145deg, var(--blue), var(--sky));
+  box-shadow: 0 16px 30px rgba(47, 103, 216, .28);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--blue);
+  font-size: .77rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font: 700 clamp(4rem, 13vw, 7.5rem)/.9 Georgia, serif;
+  letter-spacing: -.06em;
+}
+
+.intro {
+  max-width: 520px;
+  margin: 26px auto 34px;
+  color: #51617e;
+  font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+  line-height: 1.6;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border: 1px solid #ccdef9;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #365178;
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.status span {
+  width: 9px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #28a86b;
+  box-shadow: 0 0 0 5px rgba(40, 168, 107, .13);
+}
+
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(20px) scale(.98); }
+}
+
+@media (max-width: 520px) {
+  body { padding: 14px; }
+  .launch-card { border-radius: 30px; }
+}
