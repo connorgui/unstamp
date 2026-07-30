@@ -3,17 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Unstamp is coming soon.">
-  <title>Unstamp</title>
+  <meta name="description" content="Unstamp restores unwanted areas in images you own using AI-powered inpainting.">
+  <title>Unstamp | AI Photo Cleanup</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="launch-card">
-    <span class="mark" aria-hidden="true">U</span>
-    <p class="eyebrow">A new project from CG Creations</p>
-    <h1>Unstamp</h1>
-    <p class="intro">Something new is taking shape. Check back soon.</p>
-    <div class="status"><span></span> Site setup in progress</div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Unstamp home">
+      <span class="brand-mark" aria-hidden="true">U</span>
+      <span>Unstamp</span>
+    </a>
+    <span class="free-pill"><span></span> Free AI beta</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">AI-powered photo restoration</p>
+      <h1>Erase the distraction.<br><em>Keep the moment.</em></h1>
+      <p class="hero-copy">Upload an image you own, paint over an unwanted logo, timestamp, text overlay, or object, and tell Unstamp how the area should look.</p>
+      <div class="step-row" aria-label="How it works">
+        <span><b>1</b> Upload</span><i></i><span><b>2</b> Paint</span><i></i><span><b>3</b> Restore</span>
+      </div>
+    </section>
+
+    <section class="workspace" aria-labelledby="editor-title">
+      <div class="workspace-heading">
+        <div>
+          <p class="section-kicker">Restoration studio</p>
+          <h2 id="editor-title">Clean up your image</h2>
+        </div>
+        <button class="secondary-button" id="newImageButton" type="button" hidden>New image</button>
+      </div>
+
+      <div class="editor-grid">
+        <div class="canvas-panel">
+          <div class="upload-zone" id="uploadZone">
+            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+            <div class="upload-icon" aria-hidden="true">+</div>
+            <h3>Drop your photo here</h3>
+            <p>PNG, JPG, or WebP up to 10 MB</p>
+            <button class="primary-button" id="chooseButton" type="button">Choose an image</button>
+          </div>
+
+          <div class="canvas-stage" id="canvasStage" hidden>
+            <div class="canvas-toolbar">
+              <label for="brushSize">Brush <output id="brushOutput">42</output></label>
+              <input id="brushSize" type="range" min="8" max="140" value="42">
+              <button id="undoButton" type="button" disabled>Undo</button>
+              <button id="clearButton" type="button" disabled>Clear mask</button>
+            </div>
+            <div class="canvas-wrap" id="canvasWrap">
+              <canvas id="photoCanvas"></canvas>
+              <canvas id="maskCanvas" aria-label="Paint over the area to restore"></canvas>
+              <div class="brush-cursor" id="brushCursor" hidden></div>
+            </div>
+            <p class="canvas-help"><span></span> Paint over every part you want AI to rebuild.</p>
+          </div>
+        </div>
+
+        <aside class="assistant-panel">
+          <div class="assistant-title">
+            <span class="spark" aria-hidden="true">*</span>
+            <div><strong>Restoration assistant</strong><small>Describe the correction</small></div>
+          </div>
+          <div class="chat" id="chatLog" aria-live="polite">
+            <div class="message assistant-message">Upload a photo, paint over the unwanted area, then tell me what should replace it.</div>
+          </div>
+          <label class="prompt-label" for="promptInput">Your instruction</label>
+          <textarea id="promptInput" rows="4" placeholder="Example: Rebuild the brick wall behind this text and match the surrounding light."></textarea>
+          <div class="prompt-chips" aria-label="Prompt suggestions">
+            <button type="button" data-prompt="Restore the masked area to match the surrounding background naturally.">Match background</button>
+            <button type="button" data-prompt="Remove the timestamp and continue the original texture underneath it.">Clear timestamp</button>
+          </div>
+          <label class="permission-check">
+            <input id="permissionCheck" type="checkbox">
+            <span>I own this image or have permission to edit it.</span>
+          </label>
+          <button class="restore-button" id="restoreButton" type="button" disabled>
+            <span>Restore with AI</span><b aria-hidden="true">-></b>
+          </button>
+          <p class="usage-note">Free beta usage is subject to Cloudflare's daily AI allowance.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="result-section" id="resultSection" hidden aria-labelledby="result-title">
+      <div class="result-copy">
+        <p class="section-kicker">Restoration complete</p>
+        <h2 id="result-title">Your cleaned image</h2>
+        <p>AI can make mistakes. Check edges and detailed textures before using the result.</p>
+      </div>
+      <div class="result-card"><img id="resultImage" alt="AI-restored result"></div>
+      <div class="result-actions">
+        <a class="primary-button" id="downloadButton" download="unstamp-restored.png">Download result</a>
+        <button class="secondary-button" id="tryAgainButton" type="button">Adjust and try again</button>
+      </div>
+    </section>
   </main>
+
+  <footer><span>Unstamp by CG Creations</span><span>Only edit images you own or have permission to modify.</span></footer>
+  <script src="app.js"></script>
 </body>
 </html>
