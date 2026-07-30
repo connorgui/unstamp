@@ -77,7 +77,7 @@ h2 { margin: 0; font: 700 clamp(2rem, 4vw, 3.1rem)/1 Georgia, serif; letter-spac
 .canvas-toolbar button:disabled { cursor: default; opacity: .45; }
 .canvas-wrap { position: relative; display: grid; place-items: center; min-height: 490px; padding: 16px; overflow: auto; background: linear-gradient(45deg, #e8eef5 25%, transparent 25%), linear-gradient(-45deg, #e8eef5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e8eef5 75%), linear-gradient(-45deg, transparent 75%, #e8eef5 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0; }
 .canvas-wrap canvas { grid-area: 1 / 1; display: block; max-width: 100%; max-height: 66vh; border-radius: 7px; box-shadow: 0 16px 40px rgba(20,45,80,.2); }
-#maskCanvas { cursor: none; touch-action: none; opacity: .52; }
+#maskCanvas { cursor: none; touch-action: none; opacity: .52; mix-blend-mode: screen; }
 .brush-cursor { position: absolute; z-index: 3; border: 2px solid white; border-radius: 50%; background: rgba(36,104,223,.22); box-shadow: 0 0 0 1px var(--blue); pointer-events: none; transform: translate(-50%, -50%); }
 .canvas-help { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 0; padding: 12px; color: #5c708d; font-size: .82rem; }
 .canvas-help span { width: 11px; aspect-ratio: 1; border-radius: 50%; background: rgba(36,104,223,.55); }

@@ -47,7 +47,8 @@ function addMessage(text, type) {
 function resetMask() {
   maskContext.save();
   maskContext.globalCompositeOperation = "source-over";
-  maskContext.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+  maskContext.fillStyle = "black";
+  maskContext.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
   maskContext.restore();
   maskHistory = [];
   hasMask = false;
