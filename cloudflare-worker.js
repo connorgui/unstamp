@@ -53,6 +53,10 @@ export default {
       const image = form.get("image");
       const mask = form.get("mask");
       const prompt = String(form.get("prompt") || "").trim();
+      const removalTerms = /\b(remove|erase|delete|watermark|logo|text|letter|word|number|timestamp|date|signature|stamp)\b/i;
+      const backgroundGuidance = removalTerms.test(prompt)
+        ? "Match the visible surrounding background, texture, colors, lighting, and perspective."
+        : prompt || "Match the visible surrounding background, texture, colors, lighting, and perspective.";
 
       if (String(form.get("authorized") || "") !== "true") {
         return json(request, { error: "Confirm that you own the image or have permission to edit it." }, 403);
@@ -68,11 +72,12 @@ export default {
       }
 
       const result = await env.AI.run(MODEL, {
-        prompt: `Create a clean, empty, natural continuation of the surrounding image inside the mask. Do not add text, letters, numbers, symbols, logos, signatures, or watermarks. ${prompt || "Match the surrounding texture, lighting, colors, and perspective."}`,
+        prompt: `Seamless photorealistic continuation of the existing scene inside the selected area. ${backgroundGuidance}`,
+        negative_prompt: "text, letters, words, numbers, typography, captions, watermark, logo, signature, symbols, signs, labels, artificial objects, blur, distortion, artifacts",
         image: [...new Uint8Array(await image.arrayBuffer())],
         mask: [...new Uint8Array(await mask.arrayBuffer())],
-        num_steps: 10,
-        strength: 0.8
+        num_steps: 16,
+        strength: 0.9
       });
 
       return new Response(result, {

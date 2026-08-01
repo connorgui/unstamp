@@ -2,6 +2,8 @@ const API_URL = "https://unstamp-ai.connor-y-gui.workers.dev/inpaint";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_DIMENSION = 1024;
 const TILE_SIZE = 512;
+const MASK_PADDING = 24;
+const MASK_PREFILL_SCALE = 16;
 
 const imageInput = document.querySelector("#imageInput");
 const uploadZone = document.querySelector("#uploadZone");
@@ -165,21 +167,82 @@ function createCanvas(width, height) {
   return canvas;
 }
 
-function regionHasMask(x, y, width, height) {
-  const pixels = maskContext.getImageData(x, y, width, height).data;
+function regionHasMask(maskSource, x, y, width, height) {
+  const pixels = maskSource.getContext("2d", { willReadFrequently: true }).getImageData(x, y, width, height).data;
   for (let index = 0; index < pixels.length; index += 4) {
     if (pixels[index] > 127) return true;
   }
   return false;
 }
 
-function restorationTiles() {
+function expandedMask(radius = MASK_PADDING) {
+  const expanded = createCanvas(maskCanvas.width, maskCanvas.height);
+  const context = expanded.getContext("2d");
+  context.fillStyle = "black";
+  context.fillRect(0, 0, expanded.width, expanded.height);
+  context.globalCompositeOperation = "lighter";
+
+  for (let y = -radius; y <= radius; y += 4) {
+    for (let x = -radius; x <= radius; x += 4) {
+      if ((x * x) + (y * y) <= radius * radius) context.drawImage(maskCanvas, x, y);
+    }
+  }
+  context.drawImage(maskCanvas, 0, 0);
+  context.globalCompositeOperation = "source-over";
+  return expanded;
+}
+
+function maskBounds(maskSource) {
+  const { width, height } = maskSource;
+  const pixels = maskSource.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, width, height).data;
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[((y * width) + x) * 4] <= 127) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return right < left ? null : { left, top, right: right + 1, bottom: bottom + 1 };
+}
+
+function restorationTiles(maskSource) {
+  const bounds = maskBounds(maskSource);
+  if (!bounds) return [];
+
+  const boundsWidth = bounds.right - bounds.left;
+  const boundsHeight = bounds.bottom - bounds.top;
+  if (boundsWidth <= TILE_SIZE && boundsHeight <= TILE_SIZE) {
+    const cropWidth = Math.min(TILE_SIZE, photoCanvas.width);
+    const cropHeight = Math.min(TILE_SIZE, photoCanvas.height);
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    const cropX = Math.max(0, Math.min(Math.round(centerX - cropWidth / 2), photoCanvas.width - cropWidth));
+    const cropY = Math.max(0, Math.min(Math.round(centerY - cropHeight / 2), photoCanvas.height - cropHeight));
+    return [{
+      x: bounds.left,
+      y: bounds.top,
+      coreWidth: boundsWidth,
+      coreHeight: boundsHeight,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight
+    }];
+  }
+
   const tiles = [];
   for (let y = 0; y < photoCanvas.height; y += TILE_SIZE) {
     for (let x = 0; x < photoCanvas.width; x += TILE_SIZE) {
       const coreWidth = Math.min(TILE_SIZE, photoCanvas.width - x);
       const coreHeight = Math.min(TILE_SIZE, photoCanvas.height - y);
-      if (!regionHasMask(x, y, coreWidth, coreHeight)) continue;
+      if (!regionHasMask(maskSource, x, y, coreWidth, coreHeight)) continue;
 
       const cropWidth = Math.min(TILE_SIZE, photoCanvas.width);
       const cropHeight = Math.min(TILE_SIZE, photoCanvas.height);
@@ -191,9 +254,10 @@ function restorationTiles() {
   return tiles;
 }
 
-function prepareTile(tile) {
+function prepareTile(tile, maskSource) {
   const image = createCanvas(TILE_SIZE, TILE_SIZE);
-  image.getContext("2d").drawImage(
+  const imageContext = image.getContext("2d", { willReadFrequently: true });
+  imageContext.drawImage(
     photoCanvas,
     tile.cropX, tile.cropY, tile.cropWidth, tile.cropHeight,
     0, 0, TILE_SIZE, TILE_SIZE
@@ -215,16 +279,36 @@ function prepareTile(tile) {
   );
   context.clip();
   context.drawImage(
-    maskCanvas,
+    maskSource,
     tile.cropX, tile.cropY, tile.cropWidth, tile.cropHeight,
     0, 0, TILE_SIZE, TILE_SIZE
   );
   context.restore();
+
+  const reducedSize = Math.max(8, Math.round(TILE_SIZE / MASK_PREFILL_SCALE));
+  const reduced = createCanvas(reducedSize, reducedSize);
+  reduced.getContext("2d").drawImage(image, 0, 0, reducedSize, reducedSize);
+  const blurred = createCanvas(TILE_SIZE, TILE_SIZE);
+  const blurredContext = blurred.getContext("2d", { willReadFrequently: true });
+  blurredContext.imageSmoothingEnabled = true;
+  blurredContext.imageSmoothingQuality = "high";
+  blurredContext.drawImage(reduced, 0, 0, TILE_SIZE, TILE_SIZE);
+
+  const imagePixels = imageContext.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+  const blurredPixels = blurredContext.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data;
+  const maskPixels = context.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data;
+  for (let index = 0; index < maskPixels.length; index += 4) {
+    if (maskPixels[index] <= 127) continue;
+    imagePixels.data[index] = blurredPixels[index];
+    imagePixels.data[index + 1] = blurredPixels[index + 1];
+    imagePixels.data[index + 2] = blurredPixels[index + 2];
+  }
+  imageContext.putImageData(imagePixels, 0, 0);
   return { image, mask };
 }
 
-async function restoreTile(tile, instruction) {
-  const prepared = prepareTile(tile);
+async function restoreTile(tile, instruction, maskSource) {
+  const prepared = prepareTile(tile, maskSource);
   const form = new FormData();
   form.append("image", await canvasBlob(prepared.image), "original.png");
   form.append("mask", await canvasBlob(prepared.mask), "mask.png");
@@ -241,7 +325,7 @@ async function restoreTile(tile, instruction) {
   return createImageBitmap(await response.blob());
 }
 
-function applyTile(resultContext, tile, bitmap) {
+function applyTile(resultContext, tile, bitmap, maskSource) {
   const generated = createCanvas(tile.cropWidth, tile.cropHeight);
   generated.getContext("2d").drawImage(bitmap, 0, 0, tile.cropWidth, tile.cropHeight);
   bitmap.close();
@@ -252,7 +336,8 @@ function applyTile(resultContext, tile, bitmap) {
     localX, localY, tile.coreWidth, tile.coreHeight
   );
   const originalPixels = resultContext.getImageData(tile.x, tile.y, tile.coreWidth, tile.coreHeight);
-  const maskPixels = maskContext.getImageData(tile.x, tile.y, tile.coreWidth, tile.coreHeight).data;
+  const maskPixels = maskSource.getContext("2d", { willReadFrequently: true })
+    .getImageData(tile.x, tile.y, tile.coreWidth, tile.coreHeight).data;
 
   for (let index = 0; index < maskPixels.length; index += 4) {
     if (maskPixels[index] <= 127) continue;
@@ -272,13 +357,14 @@ async function restoreImage() {
   setRestoreState();
 
   try {
-    const tiles = restorationTiles();
+    const restorationMask = expandedMask();
+    const tiles = restorationTiles(restorationMask);
     if (!tiles.length) throw new Error("Paint over at least one area to restore.");
     addMessage(`Restoring ${tiles.length} image section${tiles.length === 1 ? "" : "s"}. This can take a few minutes.`, "assistant");
 
     let completed = 0;
     const bitmaps = await Promise.all(tiles.map(async tile => {
-      const bitmap = await restoreTile(tile, instruction);
+      const bitmap = await restoreTile(tile, instruction, restorationMask);
       completed += 1;
       restoreButton.querySelector("span").textContent = `Restoring ${completed}/${tiles.length}`;
       return bitmap;
@@ -287,7 +373,7 @@ async function restoreImage() {
     const restored = createCanvas(photoCanvas.width, photoCanvas.height);
     const restoredContext = restored.getContext("2d");
     restoredContext.drawImage(photoCanvas, 0, 0);
-    tiles.forEach((tile, index) => applyTile(restoredContext, tile, bitmaps[index]));
+    tiles.forEach((tile, index) => applyTile(restoredContext, tile, bitmaps[index], restorationMask));
     const result = await canvasBlob(restored);
     if (resultUrl) URL.revokeObjectURL(resultUrl);
     resultUrl = URL.createObjectURL(result);
