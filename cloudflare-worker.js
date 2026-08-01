@@ -29,6 +29,21 @@ function json(request, data, status = 200) {
   });
 }
 
+function restorationGuidance(prompt) {
+  const fallback = "Match the visible surrounding background, texture, colors, lighting, and perspective. Add no new objects.";
+  if (!prompt) return fallback;
+
+  const removalTerms = /\b(remove|erase|delete|watermark|logo|text|letter|word|number|timestamp|date|signature|stamp)\b/i;
+  if (!removalTerms.test(prompt)) return prompt;
+
+  // Keep the user's description of the desired background without repeating
+  // the watermark wording, which can cause an inpainting model to draw letters.
+  const continuation = prompt.match(/\b(?:continue|rebuild|reconstruct|match)\b[\s\S]*/i)?.[0]
+    .replace(/\b(?:do not|don't|without)\b[\s\S]*/i, "")
+    .trim();
+  return continuation || fallback;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -53,10 +68,7 @@ export default {
       const image = form.get("image");
       const mask = form.get("mask");
       const prompt = String(form.get("prompt") || "").trim();
-      const removalTerms = /\b(remove|erase|delete|watermark|logo|text|letter|word|number|timestamp|date|signature|stamp)\b/i;
-      const backgroundGuidance = removalTerms.test(prompt)
-        ? "Match the visible surrounding background, texture, colors, lighting, and perspective."
-        : prompt || "Match the visible surrounding background, texture, colors, lighting, and perspective.";
+      const backgroundGuidance = restorationGuidance(prompt);
 
       if (String(form.get("authorized") || "") !== "true") {
         return json(request, { error: "Confirm that you own the image or have permission to edit it." }, 403);
@@ -72,11 +84,11 @@ export default {
       }
 
       const result = await env.AI.run(MODEL, {
-        prompt: `Seamless photorealistic continuation of the existing scene inside the selected area. ${backgroundGuidance}`,
-        negative_prompt: "text, letters, words, numbers, typography, captions, watermark, logo, signature, symbols, signs, labels, artificial objects, blur, distortion, artifacts",
+        prompt: `Seamless photorealistic continuation of the existing scene inside the selected area. ${backgroundGuidance} Preserve the scene structure.`,
+        negative_prompt: "text, letters, words, numbers, typography, captions, watermark, logo, signature, symbols, signs, labels, artificial objects, people, faces, hands, blur, distortion, artifacts",
         image: [...new Uint8Array(await image.arrayBuffer())],
         mask: [...new Uint8Array(await mask.arrayBuffer())],
-        num_steps: 16,
+        num_steps: 20,
         strength: 0.9
       });
 
