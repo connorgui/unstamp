@@ -319,6 +319,9 @@ async function restoreTile(tile, instruction, maskSource) {
   if (!response.ok) {
     let message = "The restoration could not be completed.";
     try { message = (await response.json()).error || message; } catch {}
+    if (response.status >= 500 && /could not be completed|clear mask/i.test(message)) {
+      message = "Image restoration is unavailable right now. Unstamp's free daily AI allowance may have been used; if so, try again after Cloudflare's reset at 00:00 UTC (8:00 PM Eastern during daylight saving time; 7:00 PM otherwise). If the problem continues after the reset, adjust the painted area and try again.";
+    }
     throw new Error(message);
   }
 
