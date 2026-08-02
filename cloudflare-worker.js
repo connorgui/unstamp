@@ -44,6 +44,18 @@ function restorationGuidance(prompt) {
   return continuation || fallback;
 }
 
+function isDailyAiLimit(error) {
+  const details = [
+    error?.code,
+    error?.status,
+    error?.message,
+    error?.cause?.code,
+    error?.cause?.status,
+    error?.cause?.message
+  ].filter(Boolean).join(" ");
+  return /\b3036\b|daily free allocation|10,?000 neurons|account limited/i.test(details);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -101,6 +113,11 @@ export default {
       });
     } catch (error) {
       console.error(JSON.stringify({ name: error?.name, message: String(error?.message || error) }));
+      if (isDailyAiLimit(error)) {
+        return json(request, {
+          error: "Unstamp's free AI allowance has been used for today. Please try again after Cloudflare's daily reset at 00:00 UTC (8:00 PM Eastern during daylight saving time; 7:00 PM otherwise)."
+        }, 429);
+      }
       return json(request, { error: "Image restoration failed. Please try again with a clear mask." }, 500);
     }
   }
